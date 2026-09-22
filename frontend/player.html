@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="dark">
+  <title>Lecteur — FilmHub</title>
+  <link rel="stylesheet" href="css/styles.css?v=9">
+</head>
+<body class="player-body">
+
+  <nav class="navbar player-nav">
+    <div class="navbar-inner">
+      <button class="logo" data-nav="home" aria-label="FilmHub — Accueil">
+        <span class="logo-mark">F</span>
+        <span class="logo-text">FilmHub</span>
+      </button>
+      <div class="nav-tabs">
+        <a class="nav-tab" href="index.html" data-view="library">← Retour Bibliothèque</a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="app player-app">
+    <div class="player-shell">
+      <header class="player-header">
+        <h1 id="player-title" class="player-title">Chargement…</h1>
+        <button id="subs-btn" class="btn btn-accent btn-subtitles hidden">
+          Sous-titres FR / AR
+        </button>
+      </header>
+
+      <video id="video" class="video-player" controls autoplay playsinline></video>
+
+      <div class="player-controls">
+        <button id="seek-back" class="btn btn-ghost btn-sm" type="button">‹ 10 s</button>
+        <button id="seek-fwd" class="btn btn-ghost btn-sm" type="button">10 s ›</button>
+        <label class="speed-label" for="speed-select">Vitesse</label>
+        <select id="speed-select" class="speed-select">
+          <option value="0.75">0.75×</option>
+          <option value="1" selected>1×</option>
+          <option value="1.25">1.25×</option>
+          <option value="1.5">1.5×</option>
+          <option value="2">2×</option>
+        </select>
+      </div>
+
+      <p class="player-hint" id="player-hint">
+        Les sous-titres sont disponibles dès qu'ils sont téléchargés. Cliquez sur « Sous-titres FR/AR » pour les récupérer.
+      </p>
+    </div>
+  </main>
+
+  <div class="toast-container" id="toast-container"></div>
+  <div class="loading-overlay hidden" id="loading-overlay">
+    <div class="spinner"></div>
+  </div>
+
+  <script src="js/config.js"></script>
+    <script src="js/player.js?v=9"></script>
+</body>
+</html>

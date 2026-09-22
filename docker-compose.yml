@@ -1,0 +1,19 @@
+services:
+  filmhub:
+    build: .
+    container_name: filmhub
+    restart: unless-stopped
+    ports:
+      - "8888:8888"
+    environment:
+      FILMHUB_DLNA: "0"
+      FILMHUB_DATA_DIR: /data
+      FILMHUB_DOWNLOADS: /data/Downloads/FILMS
+      FILMHUB_PORT: "8888"
+    volumes:
+      - ./filmhub-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "-s", "-o", "/dev/null", "http://127.0.0.1:8888/login"]
+      interval: 30s
+      timeout: 5s
+      retries: 3

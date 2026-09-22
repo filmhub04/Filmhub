@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="dark">
+  <title>FilmHub — Films en streaming et téléchargement</title>
+  <link rel="stylesheet" href="css/styles.css?v=10">
+</head>
+<body>
+
+  <nav class="navbar" id="navbar">
+    <div class="navbar-inner">
+      <button class="logo" data-nav="home" aria-label="FilmHub — Accueil">
+        <span class="logo-mark">F</span>
+        <span class="logo-text">FilmHub</span>
+      </button>
+
+      <form class="search-form" id="search-form" role="search">
+        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="11" cy="11" r="7"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input type="text" id="search-input" placeholder="Rechercher un film..."
+               autocomplete="off" spellcheck="false" aria-label="Rechercher un film">
+        <input type="number" id="search-year" placeholder="Année" min="1900" max="2100" aria-label="Année (optionnel)">
+        <button type="submit" class="search-submit">Rechercher</button>
+      </form>
+
+      <div class="nav-tabs">
+        <button class="nav-tab active" data-nav="home">Accueil</button>
+        <button class="nav-tab" data-nav="library">Bibliothèque</button>
+        <button class="nav-tab" data-nav="downloads">Téléchargements</button>
+      </div>
+    </div>
+  </nav>
+
+  <main class="app">
+
+    <section id="view-home" class="view active" data-view="home"></section>
+
+    <section id="view-search" class="view" data-view="search"></section>
+
+    <section id="view-library" class="view" data-view="library"></section>
+
+    <section id="view-downloads" class="view" data-view="downloads"></section>
+
+  </main>
+
+  <footer class="footer">
+    <span>FilmHub © 2026</span>
+    <span>Votre hub de streaming et téléchargement</span>
+    <span class="build-tag">v3 · Bloc 3 activé</span>
+  </footer>
+
+  <div class="overlay" id="overlay"></div>
+
+  <div class="hero-backdrop" id="hero-backdrop"></div>
+
+  <div class="modal hidden" id="movie-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <button class="modal-close" id="modal-close" aria-label="Fermer">✕</button>
+    <div class="modal-content" id="modal-content"></div>
+  </div>
+
+  <div class="toast-container" id="toast-container"></div>
+
+  <div class="loading-overlay hidden" id="loading-overlay">
+    <div class="spinner"></div>
+  </div>
+
+  <script src="js/config.js"></script>
+    <script src="js/app.js?v=10"></script>
+</body>
+</html>

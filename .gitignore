@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Secrets
+.env
+
+# Donnees locales (base + journaux + sauvegardes)
+films.db
+films.db-wal
+films.db-shm
+server.log
+backups/
+
+# Donnees persistant (filmhub-data en cloud)
+filmhub-data/
+
+# Artifacts tunnel Cloudflare (logs + URL public)
+logs/
+watch_tunnel.vbs
+start_tunnel.bat
+watch_tunnel_named.vbs
+
+# Secret TMDB (clé d'API locale, hors git)
+tmdb_key.txt
+
+# Token du tunnel nommé Cloudflare (secret) + fichiers certs locaux
+tunnel.conf
+.cfargotunnelcert.pem
+~/.cloudflared/*
+
+# Fichiers legacy avec cle API enterree
+app_tkinter_groq.py
+routeur.py

@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+*.pyo
+backups/
+server.log
+films.db
+filmhub-data/
+watch_filmhub.vbs
+start_filmhub.bat
+Dockerfile
+docker-compose.yml
+.dockerignore
