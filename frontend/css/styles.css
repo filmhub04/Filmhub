@@ -575,13 +575,11 @@ body.has-hero .hero-backdrop { opacity: 1; }
   display: grid;
   place-items: center;
   cursor: pointer;
-  opacity: 0;
-  transition: opacity 0.2s, background 0.2s, transform 0.15s;
+  opacity: 1;
+  transition: background 0.2s, transform 0.15s;
   z-index: 3;
 }
 
-.card:hover .card-save,
-.card:focus-within .card-save { opacity: 1; }
 .card-save:hover { background: rgba(28, 110, 242, 0.9); color: #fff; transform: scale(1.08); }
 
 .card-body {
