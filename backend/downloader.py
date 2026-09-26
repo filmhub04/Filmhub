@@ -2,11 +2,9 @@ import re
 import subprocess
 import threading
 from datetime import datetime
-from pathlib import Path
 
-from backend import db
+from backend import db, settings
 
-DOWNLOADS_DIR = Path.home() / "Downloads" / "FILMS"
 processes = {}
 
 PROGRESS_RE = re.compile(r"(\d+\.?\d*\s?(?:[KMGT]i?B))/([^\(]+)\((\d+)%\)")
@@ -112,7 +110,7 @@ def _save_meta(download_id, title, poster, genres=()):
         if row.get("status") != "completed":
             return
         completed = row.get("completed_at") or _now()
-        for child in DOWNLOADS_DIR.rglob("*"):
+        for child in settings.downloads_dir().rglob("*"):
             if not child.is_file() or child.suffix.lower() not in (".mkv", ".mp4", ".avi", ".mov"):
                 continue
             if child.stat().st_mtime <= 0:
@@ -162,7 +160,7 @@ def _save_meta(download_id, title, poster, genres=()):
 def _build_args(link):
     return [
         "aria2c",
-        f"--dir={DOWNLOADS_DIR}",
+        f"--dir={settings.downloads_dir()}",
         "--enable-dht=true",
         "--continue=true",
         "--bt-save-metadata=true",
@@ -177,7 +175,7 @@ def _launch(download_id, link, title, poster, genres):
     existing = processes.get(download_id)
     if existing is not None and existing.poll() is None:
         return False
-    DOWNLOADS_DIR.mkdir(parents=True, exist_ok=True)
+    settings.downloads_dir().mkdir(parents=True, exist_ok=True)
     args = _build_args(link)
     try:
         proc = subprocess.Popen(
@@ -254,11 +252,12 @@ def resume_download(download_id):
 
 def kill_stale_aria2():
     try:
+        target = str(settings.downloads_dir()).replace("[", "[[]")
         subprocess.run(
             [
                 "powershell", "-NoProfile", "-Command",
                 "Get-CimInstance Win32_Process -Filter \"Name='aria2c.exe'\" | "
-                "Where-Object { $_.CommandLine -like '*Downloads\\FILMS*' } | "
+                "Where-Object { $_.CommandLine -like '*--dir=" + target + "*' } | "
                 "ForEach-Object { Stop-Process -Id $_.ProcessId -Force }",
             ],
             capture_output=True,

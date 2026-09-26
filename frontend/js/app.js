@@ -45,6 +45,11 @@
     libGenre: 'all',
     libSort: 'recent',
     libFavOnly: false,
+    dlDir: '',
+    fsPath: '',
+    fsParent: '',
+    fsEntries: null,
+    fsLoaded: false,
   };
 
   const STATUS_FR = {
@@ -122,6 +127,9 @@
     const fav = extra.favorite !== undefined
       ? `<button class="card-fav${extra.favorite ? ' on' : ''}" data-action="fav" data-id="${esc(item.id)}" aria-label="Favori">${extra.favorite ? '♥' : '♡'}</button>`
       : '';
+    const save = extra.save && item.id
+      ? `<button class="card-save" data-action="save" data-id="${esc(item.id)}" aria-label="Enregistrer sur le PC" title="Enregistrer sur le PC">💾</button>`
+      : '';
     let labels = extra.subLabels;
     if (typeof labels === 'function') labels = labels(extra.item || {});
     if (labels && !labels.length) labels = null;
@@ -144,6 +152,7 @@
           ${cover}
           ${badge}
           ${fav}
+          ${save}
           ${remove}
           ${del}
         </div>
@@ -168,6 +177,7 @@
       remove: opts.remove,
       delete: opts.delete,
       favorite: opts.favorite,
+      save: opts.save,
       subLabels: opts.subLabels,
       fakeId: opts.fakeId,
       noBody: opts.noBody,
@@ -269,6 +279,13 @@
     if (e.key === 'Escape') suggestBox.classList.add('hidden');
   });
   document.addEventListener('click', (e) => {
+    const saveBtn = e.target.closest('[data-action="save"]');
+    if (saveBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      saveToPc(saveBtn.dataset.id);
+      return;
+    }
     if (!e.target.closest('.search-form')) suggestBox.classList.add('hidden');
   });
 
@@ -491,6 +508,7 @@
     })), {
       action: 'play',
       badge: 'Reprendre',
+      save: true,
       subLabels: ['▶ Reprendre la lecture'],
     });
 
@@ -509,6 +527,7 @@
         })), {
           action: 'play',
           badge: 'Lire',
+          save: true,
           subLabels: (l) => (l._size ? [formatSize(l._size)] : []),
         })
       ).join('');
@@ -523,6 +542,7 @@
             <div class="hero-meta"><span class="hero-badge">À regarder</span>${heroMeta}</div>
             <div class="hero-actions">
               <a class="btn btn-play" href="player.html?id=${encodeURIComponent(first.id)}">▶ Lecture</a>
+              <button class="btn btn-primary" data-action="save" data-id="${esc(first.id)}">💾 Enregistrer sur le PC</button>
               <button class="btn btn-download" data-action="open" data-id="${esc(first.id)}"
                       data-title="${esc(first.title)}" data-poster="${esc(first.poster || '')}"
                       data-size="${esc(first.size === undefined ? '' : first.size)}">Télécharger</button>
@@ -537,6 +557,7 @@
       })), {
         action: 'play',
         badge: 'Lire',
+        save: true,
         subLabels: l => (l._size ? [formatSize(l._size)] : []),
       })}
       ${genreRows}
@@ -593,6 +614,11 @@ ${
         e.stopPropagation();
         const id = e.target.closest('.card-del').dataset.id;
         deleteLibraryItem(id);
+        return;
+      }
+      if (e.target.closest('.card-save')) {
+        e.stopPropagation();
+        saveToPc(e.target.closest('.card-save').dataset.id);
         return;
       }
       const action = card.dataset.action || 'open';
@@ -904,6 +930,7 @@ ${
       action: 'play',
       badge: 'Lire',
       delete: true,
+      save: true,
       favorite: !!l.favorite,
       subLabels: (l.year ? [String(l.year)] : []).concat(
         l.subtitles && l.subtitles.length
@@ -1084,8 +1111,40 @@ ${
         <span class="py">${list.length} téléchargement${list.length > 1 ? 's' : ''}</span>
         <button id="cleanup-btn" class="btn btn-sm btn-ghost" type="button">Nettoyer les résidus</button>
       </div>
+      <div class="dl-settings">
+        <div class="fs-row">
+          <label class="fs-label" for="dl-dir-input">Dossier d'enregistrement des films</label>
+          <input id="dl-dir-input" class="fs-input" type="text" spellcheck="false" autocomplete="off"
+            value="${esc(state.dlDir || '')}" placeholder="Chemin du dossier sur ce PC…">
+          <button id="dl-dir-save" class="btn btn-sm btn-primary" type="button">Enregistrer</button>
+        </div>
+        <div class="fs-browser">
+          <div class="fs-nav">
+            <button id="fs-up" class="btn btn-sm btn-ghost" type="button" title="Dossier parent">↰</button>
+            <span id="fs-path" class="fs-path">${esc(state.fsPath || state.dlDir || '')}</span>
+            <button id="fs-refresh" class="btn btn-sm btn-ghost" type="button" title="Actualiser">⟳</button>
+          </div>
+          <div id="fs-tree" class="fs-tree">
+            ${state.fsEntries === null ? '<div class="fs-hint">Parcourez les dossiers ou saisissez un chemin, puis « Enregistrer ».</div>'
+              : !state.fsEntries.length ? '<div class="fs-hint">(dossier vide)</div>'
+              : state.fsEntries.map(fsRow).join('')}
+          </div>
+        </div>
+      </div>
       <div class="download-list">${rows.length ? rows.join('') :
         '<div class="empty-state"><h3>Aucun téléchargement</h3><p>Lancez un téléchargement depuis la recherche d’un film.</p></div>'}</div>`;
+
+    const dirInput = $('#dl-dir-input');
+    const saveBtn = $('#dl-dir-save');
+    if (saveBtn) saveBtn.addEventListener('click', saveDlDir);
+    if (dirInput && document.activeElement !== dirInput) dirInput.value = state.dlDir || '';
+    const fsUp = $('#fs-up');
+    if (fsUp) fsUp.addEventListener('click', () => fsNavigate(state.fsParent || ''));
+    const fsRefresh = $('#fs-refresh');
+    if (fsRefresh) fsRefresh.addEventListener('click', () => fsNavigate(state.fsPath || state.dlDir || ''));
+    const fsTree = $('#fs-tree');
+    if (fsTree) fsTree.addEventListener('click', onFsTreeClick);
+    if (!state.fsLoaded && state.dlDir) fsNavigate(state.dlDir);
 
     el.downloads.querySelectorAll('[data-action="cancel"]').forEach((b) =>
       b.addEventListener('click', () => cancelDownload(b.dataset.id)));
@@ -1217,6 +1276,16 @@ ${
       .catch(() => toast('Erreur serveur, réessayez', 'error'));
   }
 
+  function saveToPc(id) {
+    const a = document.createElement('a');
+    a.href = FH + '/api/file/' + encodeURIComponent(id) + '/download';
+    a.rel = 'noopener';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    toast('Enregistrement du film sur le PC lancé', 'success', 2600);
+  }
+
   function toggleFavorite(id, btn) {
     api('/api/library/' + encodeURIComponent(id) + '/favorite', { method: 'POST' })
       .then((d) => {
@@ -1242,6 +1311,80 @@ ${
         renderLibrary();
       })
       .catch(() => toast('Erreur serveur, réessayez', 'error'));
+  }
+
+  function loadDlSettings() {
+    api('/api/settings')
+      .then((d) => {
+        if (d && d.downloads_dir) state.dlDir = d.downloads_dir;
+      })
+      .catch(() => {});
+  }
+
+  function fsRow(dir) {
+    return `
+      <div class="fs-item" data-path="${esc(dir.path)}">
+        <span class="fs-name">📁&nbsp;${esc(dir.name)}</span>
+        <span class="fs-act">
+          <button class="btn btn-sm btn-ghost" type="button" data-act="enter" data-path="${esc(dir.path)}">Entrer</button>
+          <button class="btn btn-sm btn-primary" type="button" data-act="choose" data-path="${esc(dir.path)}">Choisir</button>
+        </span>
+      </div>`;
+  }
+
+  function fsNavigate(path) {
+    path = path || state.dlDir || '';
+    api('/api/fs/list?path=' + encodeURIComponent(path))
+      .then((d) => {
+        state.fsLoaded = true;
+        state.fsPath = (d && d.path) || path;
+        state.fsParent = (d && d.parent) || '';
+        state.fsEntries = ((d && d.dirs) || []).filter((x) => x && x.path);
+        if (state.view === 'downloads') renderDownloads();
+      })
+      .catch(() => {
+        state.fsLoaded = true;
+        state.fsEntries = [];
+        if (state.view === 'downloads') renderDownloads();
+      });
+  }
+
+  function onFsTreeClick(e) {
+    const btn = e.target.closest('button[data-act]');
+    if (!btn || !btn.dataset.path) return;
+    if (btn.dataset.act === 'enter') {
+      const input = $('#dl-dir-input');
+      if (input) input.value = btn.dataset.path;
+      fsNavigate(btn.dataset.path);
+    } else {
+      const input = $('#dl-dir-input');
+      if (input) input.value = btn.dataset.path;
+      toast('Dossier sélectionné — cliquez « Enregistrer »', 'info', 1500);
+    }
+  }
+
+  function saveDlDir() {
+    const input = $('#dl-dir-input');
+    const value = input ? input.value.trim() : '';
+    if (!value) {
+      toast('Indiquez le chemin d’un dossier', 'error');
+      return;
+    }
+    api('/api/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ downloads_dir: value, create: true }),
+    })
+      .then((d) => {
+        if (d && d.status === 'ok' && d.downloads_dir) {
+          state.dlDir = d.downloads_dir;
+          toast('Dossier enregistré : ' + d.downloads_dir, 'success', 2000);
+          fsNavigate(d.downloads_dir);
+        } else {
+          toast('Erreur : ' + ((d && d.error) || 'dossier invalide'), 'error', 2500);
+        }
+      })
+      .catch(() => toast('Impossible de joindre le serveur', 'error'));
   }
 
   function scheduleDownloadRefresh() {
@@ -1276,6 +1419,7 @@ ${
   /* ------------------------------ Init ------------------------------ */
 
   ensureDownloadNotifier();
+  loadDlSettings();
   if (window.location.hash === '#downloads') switchTab('downloads');
   else if (window.location.hash === '#library') switchTab('library');
   else switchTab('home');

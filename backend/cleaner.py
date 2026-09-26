@@ -1,7 +1,7 @@
 import re
 from pathlib import Path
 
-from backend import db, downloader
+from backend import db, downloader, settings
 
 ACTIVE = ("downloading", "active", "pending")
 
@@ -11,7 +11,7 @@ def _normalize(title):
 
 
 def scan_aria2():
-    root = downloader.DOWNLOADS_DIR
+    root = settings.downloads_dir()
     out = []
     if not root.exists():
         return out
@@ -70,7 +70,7 @@ def scan_duplicates():
 
 
 def delete_aria2(rel_paths):
-    root = downloader.DOWNLOADS_DIR
+    root = settings.downloads_dir()
     root_res = root.resolve()
     deleted = 0
     for rel in rel_paths or []:

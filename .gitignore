@@ -33,3 +33,4 @@ tunnel.conf
 # Fichiers legacy avec cle API enterree
 app_tkinter_groq.py
 routeur.py
+filmhub_settings.json

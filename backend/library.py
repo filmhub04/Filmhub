@@ -3,8 +3,7 @@ import urllib.parse
 import zlib
 from pathlib import Path
 
-from backend import db
-from backend.downloader import DOWNLOADS_DIR
+from backend import db, settings
 
 VIDEO_EXTS = (".mkv", ".mp4", ".avi", ".mov")
 LANG_ALPHA3 = {
@@ -60,15 +59,35 @@ def _find_subtitles(video):
     return subtitles
 
 
+def _legacy_dir():
+    try:
+        legacy = Path.home() / "Downloads" / "FILMS"
+        if legacy != settings.downloads_dir() and legacy.exists():
+            return legacy
+    except Exception:
+        pass
+    return None
+
+
+def _scan_roots():
+    roots = [settings.downloads_dir(), _legacy_dir()]
+    out = []
+    for r in roots:
+        if r is not None and r not in out:
+            out.append(r)
+    return out
+
+
 def scan_library():
     items = []
-    if not DOWNLOADS_DIR.exists():
-        return items
     try:
         files = []
-        for p in DOWNLOADS_DIR.rglob("*"):
-            if p.is_file() and p.suffix.lower() in VIDEO_EXTS:
-                files.append(p)
+        for root in _scan_roots():
+            if not root.exists():
+                continue
+            for p in root.rglob("*"):
+                if p.is_file() and p.suffix.lower() in VIDEO_EXTS:
+                    files.append(p)
         files.sort(key=lambda p: p.stat().st_mtime or 0, reverse=True)
     except Exception:
         return items
@@ -122,12 +141,16 @@ def toggle_favorite(fid):
 
 
 def find_file_by_id(fid):
-    if not DOWNLOADS_DIR.exists():
-        return None
-    for p in DOWNLOADS_DIR.rglob("*"):
-        if p.is_file() and p.suffix.lower() in VIDEO_EXTS:
-            if _stable_id(p) == fid:
-                return p
+    for root in _scan_roots():
+        try:
+            if not root.exists():
+                continue
+            for p in root.rglob("*"):
+                if p.is_file() and p.suffix.lower() in VIDEO_EXTS:
+                    if _stable_id(p) == fid:
+                        return p
+        except Exception:
+            continue
     return None
 
 
@@ -170,9 +193,9 @@ def delete_item(fid):
     if path is None:
         return False
     try:
-        root = DOWNLOADS_DIR.resolve()
+        roots = [r.resolve() for r in _scan_roots() if r.exists()]
         parent = path.parent.resolve()
-        if parent != root and root not in parent.parents:
+        if not any(parent == r or r in parent.parents for r in roots):
             return False
         stem = path.stem
         for sibling in list(parent.glob(f"{stem}*")):

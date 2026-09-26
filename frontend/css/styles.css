@@ -560,6 +560,30 @@ body.has-hero .hero-backdrop { opacity: 1; }
 .card-remove:hover,
 .card-del:hover { background: var(--danger); color: #fff; }
 
+.card-save {
+  position: absolute;
+  top: 8px;
+  left: 44px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(11, 13, 16, 0.78);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s, background 0.2s, transform 0.15s;
+  z-index: 3;
+}
+
+.card:hover .card-save,
+.card:focus-within .card-save { opacity: 1; }
+.card-save:hover { background: rgba(28, 110, 242, 0.9); color: #fff; transform: scale(1.08); }
+
 .card-body {
   padding: 10px 12px 12px;
 }
@@ -1235,3 +1259,79 @@ body.has-hero .hero-backdrop { opacity: 1; }
   border-color: rgba(255, 93, 143, 0.7);
   color: #ff9dbb;
 }
+
+/* ---------- Dossier des films (r�glages t�l�chargements) ---------- */
+.dl-settings {
+  margin: 0 0 18px;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--card-radius);
+}
+.fs-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.fs-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+  letter-spacing: 0.02em;
+  flex: 1 1 100%;
+}
+.fs-input {
+  flex: 1 1 auto;
+  min-width: 240px;
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 14px;
+}
+.fs-input:focus { outline: none; border-color: var(--accent); }
+.btn-primary {
+  background: var(--accent-grad);
+  border: 0;
+  color: #fff;
+}
+.btn-primary:hover { filter: brightness(1.12); }
+.fs-browser {
+  margin-top: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+.fs-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.fs-path {
+  flex: 1 1 auto;
+  font-size: 13px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  direction: ltr;
+}
+.fs-tree { max-height: 190px; overflow-y: auto; }
+.fs-hint { padding: 14px; font-size: 13px; color: var(--muted); }
+.fs-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+}
+.fs-item:last-child { border-bottom: 0; }
+.fs-item:hover { background: rgba(255, 255, 255, 0.03); }
+.fs-name { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fs-act { display: flex; gap: 6px; }

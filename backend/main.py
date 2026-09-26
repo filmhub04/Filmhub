@@ -8,7 +8,7 @@ from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from backend import cleaner, db, dlna, downloader, library, poster, search, subtitles
+from backend import cleaner, db, dlna, downloader, library, poster, search, settings, subtitles
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 FRONTEND_DIR = BASE_DIR / "frontend"
@@ -18,7 +18,7 @@ FRONTEND_DIR.mkdir(parents=True, exist_ok=True)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     db.init_db()
-    downloader.DOWNLOADS_DIR.mkdir(parents=True, exist_ok=True)
+    settings.downloads_dir().mkdir(parents=True, exist_ok=True)
     FRONTEND_DIR.mkdir(parents=True, exist_ok=True)
     try:
         downloader.resume_pending()
@@ -94,6 +94,50 @@ def api_downloads():
         return {"downloads": downloader.list_downloads()}
     except Exception:
         return {"downloads": []}
+
+
+class SettingsBody(BaseModel):
+    downloads_dir: str = ""
+    create: bool = True
+
+
+@app.get("/api/settings")
+def api_settings_get():
+    try:
+        return settings.info()
+    except Exception:
+        return {"downloads_dir": "", "default_dir": ""}
+
+
+@app.post("/api/settings")
+def api_settings_set(body: SettingsBody):
+    try:
+        value = settings.set_downloads_dir(body.downloads_dir, create=body.create)
+        return {"status": "ok", "downloads_dir": value}
+    except Exception as exc:
+        return {
+            "status": "error",
+            "error": str(exc),
+            "downloads_dir": str(settings.downloads_dir()),
+        }
+
+
+@app.get("/api/fs/list")
+def api_fs_list(path: str = ""):
+    try:
+        base = settings.downloads_dir()
+        p = Path(path).expanduser() if (path or "").strip() else base
+        if not p.exists() or not p.is_dir():
+            p = base
+        p = p.resolve()
+        dirs = []
+        for child in sorted(p.iterdir(), key=lambda c: c.name.lower()):
+            if child.is_dir() and not child.name.startswith(("$", ".")):
+                dirs.append({"name": child.name, "path": str(child)})
+        parent = str(p.parent) if p.parent != p else ""
+        return {"path": str(p), "parent": parent, "dirs": dirs}
+    except Exception as exc:
+        return {"path": "", "parent": "", "dirs": [], "error": str(exc)}
 
 
 @app.post("/api/downloads/{download_id}/cancel")
@@ -227,6 +271,23 @@ def api_stream(item_id: int):
         if path is None or not path.exists():
             raise HTTPException(status_code=404, detail="Not found")
         return FileResponse(str(path))
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=500, detail="Server error")
+
+
+@app.get("/api/file/{item_id}/download")
+def api_file_download(item_id: int):
+    try:
+        path = library.find_file_by_id(item_id)
+        if path is None or not path.exists():
+            raise HTTPException(status_code=404, detail="Not found")
+        return FileResponse(
+            str(path),
+            filename=path.name,
+            media_type="application/octet-stream",
+        )
     except HTTPException:
         raise
     except Exception:
