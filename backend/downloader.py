@@ -1,6 +1,7 @@
 import re
 import subprocess
 import threading
+import urllib.parse
 from datetime import datetime
 
 from backend import db, settings
@@ -10,11 +11,20 @@ processes = {}
 PROGRESS_RE = re.compile(r"(\d+\.?\d*\s?(?:[KMGT]i?B))/([^\(]+)\((\d+)%\)")
 SPEED_RE = re.compile(r"DL:([\d.]+)([KMGT]?B)")
 ETA_RE = re.compile(r"ETA:([^]]+)")
-TRACKERS = (
-    "udp://tracker.opentrackr.org:1337/announce,"
-    "udp://open.demonii.com:1337/announce,"
-    "udp://tracker.openbittorrent.com:80/announce"
+EXTRA_TRACKERS = (
+    "udp://tracker.opentrackr.org:1337/announce",
+    "udp://open.demonii.com:1337/announce",
+    "udp://tracker.openbittorrent.com:80/announce",
+    "udp://exodus.desync.com:6969/announce",
+    "udp://tracker.cyberia.is:6969/announce",
+    "udp://tracker.torrent.eu.org:451/announce",
+    "udp://explodie.org:6969/announce",
+    "udp://tracker.moeking.me:6969/announce",
+    "udp://tracker.tiny-vps.com:6969/announce",
+    "udp://open.stealth.si:80/announce",
+    "udp://tracker.bittor.pw:1337/announce",
 )
+TRACKERS = ",".join(EXTRA_TRACKERS)
 
 
 def _now():
@@ -157,6 +167,19 @@ def _save_meta(download_id, title, poster, genres=()):
         pass
 
 
+def _boost_magnet(link):
+    if not (link or "").startswith("magnet:"):
+        return link
+    existing = set(re.findall(r"[?&]tr=([^&]+)", link))
+    parts = [t for t in EXTRA_TRACKERS if urllib.parse.quote(t, safe=":/") not in existing]
+    if not parts:
+        return link
+    tail = link.rstrip()
+    if tail[-1] not in "&?":  # pragma: no cover
+        tail += "&"
+    return tail + "&".join("tr=" + urllib.parse.quote(t, safe=":/") for t in parts)
+
+
 def _build_args(link):
     return [
         "aria2c",
@@ -203,6 +226,7 @@ def _launch(download_id, link, title, poster, genres):
 
 
 def start_download(link, title, poster="", genres=()):
+    link = _boost_magnet(link)
     download_id = db.execute(
         "INSERT INTO downloads (title, link, poster, genres, status, progress, size, speed, eta, created_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
         (title, link, poster, "|".join(genres or []), 'downloading', 0.0, '', None, '', _now()),
