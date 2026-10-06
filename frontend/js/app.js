@@ -1130,6 +1130,14 @@ ${
               : state.fsEntries.map(fsRow).join('')}
           </div>
         </div>
+        <div class="fs-row sync-row">
+          <div class="sync-info">
+            <strong>💾&nbsp;Synchronisation depuis le site public</strong>
+            <span id="sync-status" class="fs-path">…</span>
+          </div>
+          <button id="sync-now" class="btn btn-sm btn-primary" type="button">Synchroniser maintenant</button>
+        </div>
+        <pre id="sync-log" class="sync-log hidden"></pre>
       </div>
       <div class="download-list">${rows.length ? rows.join('') :
         '<div class="empty-state"><h3>Aucun téléchargement</h3><p>Lancez un téléchargement depuis la recherche d’un film.</p></div>'}</div>`;
@@ -1157,6 +1165,51 @@ ${
 
     const cleanBtn = $('#cleanup-btn');
     if (cleanBtn) cleanBtn.addEventListener('click', runCleanup);
+
+    const syncNow = $('#sync-now');
+    if (syncNow) syncNow.addEventListener('click', () => {
+      const btn = syncNow;
+      btn.disabled = true;
+      btn.textContent = 'Synchronisation…';
+      api('/api/sync/run', { method: 'POST' })
+        .then(() => toast('Rapatriement depuis le site public lancé', 'success', 2600))
+        .catch(() => toast('Erreur serveur, réessayez', 'error'))
+        .finally(() => {
+          btn.disabled = false;
+          btn.textContent = 'Synchroniser maintenant';
+          setTimeout(loadSyncStatus, 3000);
+        });
+    });
+    loadSyncStatus();
+  }
+
+  function loadSyncStatus() {
+    api('/api/sync')
+      .then((d) => {
+        const el = $('#sync-status');
+        const log = $('#sync-log');
+        if (!el) return;
+        const on = d && d.enabled ? 'ACTIVÉE' : 'DÉSACTIVÉE';
+        let txt = `Auto : ${on} · tous les ${Math.round((d && d.interval) / 60) || 15} min`;
+        if (d && d.last_run) txt += ` · dernier passage : ${d.last_run}`;
+        if (d && d.render_count !== undefined) {
+          txt += ` · ${d.render_count} film(s) sur le site public`;
+          if (d.missing_count) txt += ` (${d.missing_count} à rapatrier)`;
+        }
+        el.textContent = txt;
+        if (log && d && d.last_summary) {
+          log.textContent = d.last_summary;
+          if (d.pulled && d.pulled.length) {
+            log.textContent += '\nRapatriés :\n' + d.pulled.join('\n');
+          }
+          if (d.errors && d.errors.length) {
+            log.textContent += '\nErreurs :\n' + d.errors.join('\n');
+          }
+          log.classList.remove('hidden');
+          if (log.scrollIntoView) log.scrollIntoView({ block: 'nearest' });
+        }
+      })
+      .catch(() => {});
   }
 
   function runCleanup() {
@@ -1277,13 +1330,19 @@ ${
   }
 
   function saveToPc(id) {
-    const a = document.createElement('a');
-    a.href = FH + '/api/file/' + encodeURIComponent(id) + '/download';
-    a.rel = 'noopener';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    toast('Enregistrement du film sur le PC lancé', 'success', 2600);
+    fetch(FH + '/api/file/' + encodeURIComponent(id) + '/download', { headers: { Range: 'bytes=0-0' } })
+      .then((res) => {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        res.body.cancel();
+        const a = document.createElement('a');
+        a.href = FH + '/api/file/' + encodeURIComponent(id) + '/download';
+        a.rel = 'noopener';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        toast('Enregistrement du film sur le PC lancé', 'success', 2600);
+      })
+      .catch(() => toast('Film introuvable sur le serveur (disque effacé). Utilisez le site local : 127.0.0.1:8888', 'error', 5000));
   }
 
   function toggleFavorite(id, btn) {

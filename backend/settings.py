@@ -92,3 +92,41 @@ def info():
         "suggested": suggested(),
         "home": str(Path.home()),
     }
+
+
+DEFAULT_SYNC_URL = "https://moh-films.onrender.com"
+
+
+def sync_url():
+    url = os.environ.get("FILMHUB_SYNC_URL") or ""
+    if not url.strip():
+        url = (_load().get("sync_url") or "").strip()
+    return (url or DEFAULT_SYNC_URL).rstrip("/")
+
+
+def auto_sync_enabled():
+    env = os.environ.get("FILMHUB_AUTO_SYNC", "").strip().lower()
+    if env in ("1", "true", "yes", "on"):
+        return True
+    if env in ("0", "false", "no", "off"):
+        return False
+    return bool(_load().get("auto_sync", True))
+
+
+def sync_interval():
+    try:
+        return max(60, int(_load().get("sync_interval", 900)))
+    except Exception:
+        return 900
+
+
+def set_sync(value, active=None, interval=None, url=None):
+    data = _load()
+    if active is not None:
+        data["auto_sync"] = bool(active)
+    if interval is not None:
+        data["sync_interval"] = max(60, int(interval))
+    if url is not None:
+        data["sync_url"] = (str(url) or "").strip().rstrip("/")
+    _save(data)
+    return True

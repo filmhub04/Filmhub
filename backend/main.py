@@ -8,7 +8,7 @@ from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from backend import cleaner, db, dlna, downloader, library, poster, search, settings, subtitles
+from backend import cleaner, db, dlna, downloader, library, poster, search, settings, subtitles, syncer
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 FRONTEND_DIR = BASE_DIR / "frontend"
@@ -28,7 +28,15 @@ async def lifespan(app: FastAPI):
         dlna.start()
     except Exception:
         pass
+    try:
+        syncer.start()
+    except Exception:
+        pass
     yield
+    try:
+        syncer.stop()
+    except Exception:
+        pass
     try:
         dlna.stop()
     except Exception:
@@ -99,12 +107,19 @@ def api_downloads():
 class SettingsBody(BaseModel):
     downloads_dir: str = ""
     create: bool = True
+    auto_sync: bool | None = None
+    sync_interval: int | None = None
+    sync_url: str | None = None
 
 
 @app.get("/api/settings")
 def api_settings_get():
     try:
-        return settings.info()
+        data = settings.info()
+        data["auto_sync"] = settings.auto_sync_enabled()
+        data["sync_interval"] = settings.sync_interval()
+        data["sync_url"] = settings.sync_url()
+        return data
     except Exception:
         return {"downloads_dir": "", "default_dir": ""}
 
@@ -112,7 +127,21 @@ def api_settings_get():
 @app.post("/api/settings")
 def api_settings_set(body: SettingsBody):
     try:
-        value = settings.set_downloads_dir(body.downloads_dir, create=body.create)
+        value = settings.downloads_dir()
+        if (body.downloads_dir or "").strip():
+            value = settings.set_downloads_dir(body.downloads_dir, create=body.create)
+        if body.auto_sync is not None or body.sync_interval is not None or body.sync_url is not None:
+            settings.set_sync(
+                value,
+                active=body.auto_sync,
+                interval=body.sync_interval,
+                url=body.sync_url,
+            )
+        if body.auto_sync is not None or body.sync_interval is not None:
+            try:
+                syncer.start()
+            except Exception:
+                pass
         return {"status": "ok", "downloads_dir": value}
     except Exception as exc:
         return {
@@ -120,6 +149,26 @@ def api_settings_set(body: SettingsBody):
             "error": str(exc),
             "downloads_dir": str(settings.downloads_dir()),
         }
+
+
+@app.get("/api/sync")
+def api_sync_status():
+    try:
+        return syncer.status()
+    except Exception:
+        return {"enabled": False}
+
+
+@app.post("/api/sync/run")
+def api_sync_run():
+    def _job():
+        try:
+            syncer.sync_once()
+        except Exception:
+            pass
+
+    threading.Thread(target=_job, daemon=True).start()
+    return {"status": "started"}
 
 
 @app.get("/api/fs/list")

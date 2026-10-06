@@ -1321,6 +1321,24 @@ body.has-hero .hero-backdrop { opacity: 1; }
 }
 .fs-tree { max-height: 190px; overflow-y: auto; }
 .fs-hint { padding: 14px; font-size: 13px; color: var(--muted); }
+.sync-row { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border); }
+.sync-info { display: flex; flex-direction: column; gap: 2px; flex: 1 1 auto; min-width: 220px; }
+.sync-info strong { font-size: 13px; }
+.sync-log {
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  max-height: 120px;
+  overflow-y: auto;
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  color: var(--muted);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.sync-log.hidden { display: none; }
 .fs-item {
   display: flex;
   align-items: center;
